@@ -3,7 +3,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../.env') }
 
 async function queryOpenRouter(prompt, systemPrompt = 'You are a helpful AI lab assistant for an educational platform.') {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4.5';
+  const model = process.env.OPENROUTER_MODEL || 'anthropic/claude-3-5-sonnet-20241022';
 
   const body = JSON.stringify({
     model: model,

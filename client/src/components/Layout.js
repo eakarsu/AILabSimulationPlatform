@@ -38,6 +38,20 @@ export default function Layout() {
               {f.name}
             </button>
           ))}
+          <button
+            className={`sidebar-nav-item ${location.pathname === '/ai-history' ? 'active' : ''}`}
+            onClick={() => navigate('/ai-history')}
+          >
+            <span className="nav-icon">🕒</span>
+            AI History
+          </button>
+          <button
+            className={`sidebar-nav-item ${location.pathname === '/advanced-ai' ? 'active' : ''}`}
+            onClick={() => navigate('/advanced-ai')}
+          >
+            <span className="nav-icon">🤖</span>
+            Advanced AI
+          </button>
         </nav>
         <div className="sidebar-user">
           <div className="user-avatar">

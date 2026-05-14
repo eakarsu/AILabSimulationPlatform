@@ -75,7 +75,8 @@ const LabReport = sequelize.define('LabReport', {
   results: { type: DataTypes.TEXT },
   conclusion: { type: DataTypes.TEXT },
   grade: { type: DataTypes.STRING },
-  aiReview: { type: DataTypes.TEXT }
+  aiReview: { type: DataTypes.TEXT },
+  gradingResult: { type: DataTypes.JSONB }
 });
 
 // Safety Training
@@ -137,11 +138,35 @@ const Assessment = sequelize.define('Assessment', {
   title: { type: DataTypes.STRING, allowNull: false },
   subject: { type: DataTypes.STRING },
   type: { type: DataTypes.STRING },
-  questions: { type: DataTypes.TEXT },
+  questions: { type: DataTypes.JSONB },
+  totalPoints: { type: DataTypes.INTEGER, defaultValue: 100 },
+  estimatedMinutes: { type: DataTypes.INTEGER },
   maxScore: { type: DataTypes.INTEGER, defaultValue: 100 },
   duration: { type: DataTypes.STRING },
   difficulty: { type: DataTypes.ENUM('beginner', 'intermediate', 'advanced'), defaultValue: 'intermediate' },
   aiGenerated: { type: DataTypes.BOOLEAN, defaultValue: false }
+});
+
+// Assessment Attempt
+const AssessmentAttempt = sequelize.define('AssessmentAttempt', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  assessmentId: { type: DataTypes.INTEGER, allowNull: false },
+  userId: { type: DataTypes.INTEGER },
+  answers: { type: DataTypes.JSONB },
+  score: { type: DataTypes.INTEGER, defaultValue: 0 },
+  totalPoints: { type: DataTypes.INTEGER, defaultValue: 0 },
+  percentage: { type: DataTypes.FLOAT, defaultValue: 0 },
+  completedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
+});
+
+// AI Result persistence
+const AiResult = sequelize.define('AiResult', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  userId: { type: DataTypes.INTEGER },
+  endpoint: { type: DataTypes.STRING, allowNull: false },
+  inputData: { type: DataTypes.JSONB },
+  result: { type: DataTypes.TEXT },
+  parsedResult: { type: DataTypes.JSONB }
 });
 
 // Peer Collaboration
@@ -210,6 +235,8 @@ module.exports = {
   DataAnalysis,
   MolecularStructure,
   Assessment,
+  AssessmentAttempt,
+  AiResult,
   Collaboration,
   LabSchedule,
   ResearchPaper,
