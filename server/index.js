@@ -61,6 +61,7 @@ app.use('/api/collaborations', createCrudRouter('Collaboration'));
 app.use('/api/lab-schedules', createCrudRouter('LabSchedule'));
 app.use('/api/research-papers', createCrudRouter('ResearchPaper'));
 app.use('/api/virtual-lab-sessions', createCrudRouter('VirtualLabSession'));
+app.use('/api/reagent-depletion-planner', require('./routes/reagentDepletionPlanner'));
 
 // Health check
 app.get('/api/health', (req, res) => {

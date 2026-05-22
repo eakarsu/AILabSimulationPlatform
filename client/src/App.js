@@ -8,6 +8,10 @@ import AssessmentRunner from './pages/AssessmentRunner';
 import AIHistory from './pages/AIHistory';
 import AdvancedAITools from './pages/AdvancedAITools';
 import Layout from './components/Layout';
+import ReagentDepletionPlanner from './pages/ReagentDepletionPlanner';
+
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
 
 function PrivateRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -19,6 +23,9 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
+        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
+        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
             <Route index element={<Dashboard />} />
@@ -26,6 +33,7 @@ function App() {
             <Route path="assessments/:id/take" element={<AssessmentRunner />} />
             <Route path="ai-history" element={<AIHistory />} />
             <Route path="advanced-ai" element={<AdvancedAITools />} />
+            <Route path="reagent-depletion-planner" element={<ReagentDepletionPlanner />} />
           </Route>
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
