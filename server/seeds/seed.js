@@ -5,6 +5,12 @@ const {
   MolecularStructure, Assessment, Collaboration, LabSchedule, ResearchPaper,
   VirtualLabSession
 } = require('../models');
+if (process.env.ALLOW_DEMO_SEED !== 'true' || process.env.NODE_ENV === 'production') {
+  throw new Error('Demo seed is quarantined; set ALLOW_DEMO_SEED=true outside production to run explicitly');
+}
+if (!process.env.DEMO_SEED_PASSWORD || process.env.DEMO_SEED_PASSWORD.length < 12) {
+  throw new Error('DEMO_SEED_PASSWORD must be explicitly supplied with at least 12 characters');
+}
 
 async function seed() {
   try {
@@ -12,7 +18,7 @@ async function seed() {
     console.log('Database synced successfully');
 
     // Users
-    const hashedPassword = await bcrypt.hash('password123', 10);
+    const hashedPassword = await bcrypt.hash(process.env.DEMO_SEED_PASSWORD, 10);
     await User.bulkCreate([
       { email: 'admin@ailab.edu', password: hashedPassword, firstName: 'Admin', lastName: 'User', role: 'admin' },
       { email: 'instructor@ailab.edu', password: hashedPassword, firstName: 'Dr. Sarah', lastName: 'Chen', role: 'instructor' },

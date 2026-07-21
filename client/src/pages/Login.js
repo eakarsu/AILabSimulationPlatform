@@ -26,11 +26,6 @@ export default function Login() {
     }
   };
 
-  const autoFill = () => {
-    setEmail('admin@ailab.edu');
-    setPassword('password123');
-  };
-
   return (
     <div className="login-page">
       <div className="login-container">
@@ -65,9 +60,6 @@ export default function Login() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        <button className="auto-fill-btn" onClick={autoFill}>
-          Quick Login (Demo Credentials)
-        </button>
       </div>
     </div>
   );

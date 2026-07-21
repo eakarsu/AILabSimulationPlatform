@@ -62,6 +62,7 @@ app.use('/api/lab-schedules', createCrudRouter('LabSchedule'));
 app.use('/api/research-papers', createCrudRouter('ResearchPaper'));
 app.use('/api/virtual-lab-sessions', createCrudRouter('VirtualLabSession'));
 app.use('/api/reagent-depletion-planner', require('./routes/reagentDepletionPlanner'));
+app.use('/api/governed-lab-simulations', require('./governance'));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -73,8 +74,10 @@ async function start() {
   try {
     await sequelize.authenticate();
     console.log('Database connected');
-    await sequelize.sync();
-    console.log('Models synced');
+    if (process.env.AUTO_INIT_SCHEMA === 'true') {
+      await sequelize.sync();
+      console.log('Models synced');
+    }
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
@@ -86,22 +89,13 @@ async function start() {
 
 start();
 
-// === BATCH 05 AUTO-MOUNT (custom feature suggestions) ===
+// Generated prototype routes are opt-in for isolated, non-production evaluation.
+if (process.env.ENABLE_GENERATED_ROUTES === 'true' && process.env.NODE_ENV !== 'production') {
 app.use('/api/vision-procedure-verify', require('./routes/vision-procedure-verify'));
 app.use('/api/lab-assistant-agent', require('./routes/lab-assistant-agent'));
 app.use('/api/safety-anomaly-stream', require('./routes/safety-anomaly-stream'));
 app.use('/api/peer-feedback-synthesis', require('./routes/peer-feedback-synthesis'));
 app.use('/api/vr-lab-integration', require('./routes/vr-lab-integration'));
 
-// === Batch 05 Gaps & Frontend Mounts ===
-try { const _gap_student_misconception_detector = require('./routes/gap-student-misconception-detector'); app.use('/api/gap-student-misconception-detector', _gap_student_misconception_detector); } catch(e) { console.error('gap mount fail student-misconception-detector:', e.message); }
-try { const _gap_real_time_safety_monitor = require('./routes/gap-real-time-safety-monitor'); app.use('/api/gap-real-time-safety-monitor', _gap_real_time_safety_monitor); } catch(e) { console.error('gap mount fail real-time-safety-monitor:', e.message); }
-try { const _gap_peer_review_summarizer = require('./routes/gap-peer-review-summarizer'); app.use('/api/gap-peer-review-summarizer', _gap_peer_review_summarizer); } catch(e) { console.error('gap mount fail peer-review-summarizer:', e.message); }
-try { const _gap_research_paper_recommender = require('./routes/gap-research-paper-recommender'); app.use('/api/gap-research-paper-recommender', _gap_research_paper_recommender); } catch(e) { console.error('gap mount fail research-paper-recommender:', e.message); }
-try { const _gap_live = require('./routes/gap-live'); app.use('/api/gap-live', _gap_live); } catch(e) { console.error('gap mount fail live:', e.message); }
-try { const _gap_plagiarism = require('./routes/gap-plagiarism'); app.use('/api/gap-plagiarism', _gap_plagiarism); } catch(e) { console.error('gap mount fail plagiarism:', e.message); }
-try { const _gap_parent_guardian = require('./routes/gap-parent-guardian'); app.use('/api/gap-parent-guardian', _gap_parent_guardian); } catch(e) { console.error('gap mount fail parent-guardian:', e.message); }
-try { const _gap_lms = require('./routes/gap-lms'); app.use('/api/gap-lms', _gap_lms); } catch(e) { console.error('gap mount fail lms:', e.message); }
-try { const _gap_limited = require('./routes/gap-limited'); app.use('/api/gap-limited', _gap_limited); } catch(e) { console.error('gap mount fail limited:', e.message); }
-try { const _gap_mobile_tablet = require('./routes/gap-mobile-tablet'); app.use('/api/gap-mobile-tablet', _gap_mobile_tablet); } catch(e) { console.error('gap mount fail mobile-tablet:', e.message); }
-// === End Batch 05 Mounts ===
+}
+// Generated gap routes remain deliberately unmounted.

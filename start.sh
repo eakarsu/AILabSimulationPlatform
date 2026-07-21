@@ -1,143 +1,62 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# ============================================
-# AI Lab Simulation Platform - Start Script
-# ============================================
-
-set -e
-
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
-echo ""
-echo -e "${PURPLE}╔══════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║    🔬 AI Lab Simulation Platform             ║${NC}"
-echo -e "${PURPLE}║    Virtual Laboratory for Education          ║${NC}"
-echo -e "${PURPLE}╚══════════════════════════════════════════════╝${NC}"
-echo ""
-
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_DIR"
+API_DIR="."
+UI_DIR="client"
+MIGRATION="server/migrations/001_governed_workflows.sql"
 
-# Load .env
-if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
-  echo -e "${GREEN}✓ Environment variables loaded${NC}"
-else
-  echo -e "${RED}✗ .env file not found! Please create one.${NC}"
-  exit 1
-fi
-
-BACKEND_PORT=${BACKEND_PORT:-3001}
-FRONTEND_PORT=${FRONTEND_PORT:-3000}
-
-# ============================================
-# Clean up used ports
-# ============================================
-echo -e "\n${YELLOW}▸ Cleaning up ports...${NC}"
-
-cleanup_port() {
-  local port=$1
-  local pids=$(lsof -ti :$port 2>/dev/null || true)
-  if [ -n "$pids" ]; then
-    echo -e "  ${YELLOW}Killing processes on port $port: $pids${NC}"
-    echo "$pids" | xargs kill -9 2>/dev/null || true
-    sleep 1
+check() {
+  command -v node >/dev/null || { echo "node is required" >&2; return 1; }
+  command -v npm >/dev/null || { echo "npm is required" >&2; return 1; }
+  [[ -f .env ]] || { echo "Create .env from .env.example; defaults are not generated." >&2; return 1; }
+  grep -Eq '^JWT_SECRET=.{32,}$' .env || { echo "JWT_SECRET must contain at least 32 characters." >&2; return 1; }
+  grep -Eq '^GOVERNANCE_TENANT_ID=[A-Za-z0-9][A-Za-z0-9._:-]+$' .env ||
+    { echo "GOVERNANCE_TENANT_ID is required for signed tenant claims." >&2; return 1; }
+  grep -Eq '^DATABASE_URL=.+|^DB_HOST=.+' .env ||
+    { echo "DATABASE_URL or explicit DB_* settings are required." >&2; return 1; }
+  if grep -Eqi 'password123|secure123|your_.*key|change[_-]?me|placeholder' .env; then
+    echo "Refusing placeholder or demo credentials." >&2
+    return 1
   fi
-  echo -e "  ${GREEN}✓ Port $port is free${NC}"
+  echo "Configuration shape is valid; credentials and connectivity were not verified."
 }
 
-cleanup_port $BACKEND_PORT
-cleanup_port $FRONTEND_PORT
+migrate() {
+  check
+  [[ "${ALLOW_SCHEMA_MIGRATION:-false}" == "true" ]] ||
+    { echo "Set ALLOW_SCHEMA_MIGRATION=true for this explicit operation." >&2; return 1; }
+  : "${DATABASE_URL:?Export DATABASE_URL for the migration process.}"
+  command -v psql >/dev/null || { echo "psql is required" >&2; return 1; }
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$MIGRATION"
+}
 
-# ============================================
-# Check PostgreSQL
-# ============================================
-echo -e "\n${YELLOW}▸ Checking PostgreSQL...${NC}"
-if pg_isready -q 2>/dev/null; then
-  echo -e "  ${GREEN}✓ PostgreSQL is running${NC}"
-else
-  echo -e "  ${YELLOW}Starting PostgreSQL...${NC}"
-  brew services start postgresql@14 2>/dev/null || brew services start postgresql 2>/dev/null || {
-    echo -e "  ${RED}✗ Could not start PostgreSQL. Please start it manually.${NC}"
-    exit 1
+start_services() {
+  check
+  [[ -d "$API_DIR/node_modules" && -d "$UI_DIR/node_modules" ]] ||
+    { echo "Dependencies are absent; run reviewed locked installs separately." >&2; return 1; }
+
+  npm run server &
+  api_pid=$!
+  if node -e "const p=require('./$UI_DIR/package.json');process.exit(p.scripts&&p.scripts.dev?0:1)"; then
+    npm --prefix "$UI_DIR" run dev &
+  else
+    BROWSER=none npm --prefix "$UI_DIR" start &
+  fi
+  ui_pid=$!
+
+  cleanup() {
+    kill "$api_pid" "$ui_pid" 2>/dev/null || true
+    wait "$api_pid" "$ui_pid" 2>/dev/null || true
   }
-  sleep 2
-  echo -e "  ${GREEN}✓ PostgreSQL started${NC}"
-fi
+  trap cleanup EXIT INT TERM
+  wait "$api_pid" "$ui_pid"
+}
 
-# ============================================
-# Create database if not exists
-# ============================================
-echo -e "\n${YELLOW}▸ Setting up database...${NC}"
-DB_NAME="ai_lab_simulation"
-
-if psql -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
-  echo -e "  ${GREEN}✓ Database '$DB_NAME' exists${NC}"
-else
-  createdb "$DB_NAME" 2>/dev/null && echo -e "  ${GREEN}✓ Database '$DB_NAME' created${NC}" || {
-    psql -c "CREATE DATABASE $DB_NAME;" 2>/dev/null && echo -e "  ${GREEN}✓ Database '$DB_NAME' created${NC}" || {
-      echo -e "  ${RED}✗ Failed to create database. Trying with postgres user...${NC}"
-      psql -U postgres -c "CREATE DATABASE $DB_NAME;" 2>/dev/null || true
-    }
-  }
-fi
-
-# ============================================
-# Install dependencies
-# ============================================
-echo -e "\n${YELLOW}▸ Installing dependencies...${NC}"
-
-if [ ! -d "node_modules" ]; then
-  echo -e "  ${CYAN}Installing server dependencies...${NC}"
-  npm install --silent 2>&1 | tail -1
-fi
-echo -e "  ${GREEN}✓ Server dependencies ready${NC}"
-
-if [ ! -d "client/node_modules" ]; then
-  echo -e "  ${CYAN}Installing client dependencies...${NC}"
-  cd client && npm install --silent 2>&1 | tail -1 && cd ..
-fi
-echo -e "  ${GREEN}✓ Client dependencies ready${NC}"
-
-# ============================================
-# Seed database
-# ============================================
-echo -e "\n${YELLOW}▸ Seeding database...${NC}"
-node server/seeds/seed.js
-echo -e "  ${GREEN}✓ Database seeded with sample data${NC}"
-
-# ============================================
-# Start application with hot reload
-# ============================================
-echo ""
-echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║  🚀 Starting AI Lab Simulation Platform      ║${NC}"
-echo -e "${GREEN}║                                              ║${NC}"
-echo -e "${GREEN}║  Backend:  http://localhost:${BACKEND_PORT}              ║${NC}"
-echo -e "${GREEN}║  Frontend: http://localhost:${FRONTEND_PORT}              ║${NC}"
-echo -e "${GREEN}║                                              ║${NC}"
-echo -e "${GREEN}║  Login Credentials:                          ║${NC}"
-echo -e "${GREEN}║  Email:    admin@ailab.edu                   ║${NC}"
-echo -e "${GREEN}║  Password: password123                       ║${NC}"
-echo -e "${GREEN}║                                              ║${NC}"
-echo -e "${GREEN}║  Press Ctrl+C to stop                        ║${NC}"
-echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
-echo ""
-
-# Trap to cleanup on exit
-trap 'echo -e "\n${YELLOW}Shutting down...${NC}"; kill 0; exit 0' SIGINT SIGTERM
-
-# Start backend with nodemon (hot reload) and frontend with react-scripts (hot reload)
-npx concurrently \
-  --names "SERVER,CLIENT" \
-  --prefix-colors "blue,green" \
-  --kill-others \
-  "npx nodemon --watch server server/index.js" \
-  "cd client && PORT=${FRONTEND_PORT} BROWSER=none npm start"
+case "${1:-check}" in
+  check) check ;;
+  migrate) migrate ;;
+  start) start_services ;;
+  *) echo "Usage: ./start.sh [check|migrate|start]" >&2; exit 64 ;;
+esac
