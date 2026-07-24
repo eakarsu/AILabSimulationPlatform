@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = rateLimit;
 
 const aiRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -7,7 +8,7 @@ const aiRateLimiter = rateLimit({
     if (req.user) return `user:${req.user.id || req.user.userId}`;
     // Normalize IPv6 to avoid bypass
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-    return ip;
+    return ipKeyGenerator(ip);
   },
   validate: { xForwardedForHeader: false },
   message: { error: 'AI rate limit exceeded. Max 20 requests/hour.' }

@@ -4,6 +4,11 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../.env') }
 async function queryOpenRouter(prompt, systemPrompt = 'You are a helpful AI lab assistant for an educational platform.') {
   const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.OPENROUTER_MODEL || 'anthropic/claude-3-5-sonnet-20241022';
+  const baseUrl = new URL(process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1');
+
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY is required');
+  }
 
   const body = JSON.stringify({
     model: model,
@@ -17,8 +22,10 @@ async function queryOpenRouter(prompt, systemPrompt = 'You are a helpful AI lab 
 
   return new Promise((resolve, reject) => {
     const options = {
-      hostname: 'openrouter.ai',
-      path: '/api/v1/chat/completions',
+      protocol: baseUrl.protocol,
+      hostname: baseUrl.hostname,
+      port: baseUrl.port || undefined,
+      path: `${baseUrl.pathname.replace(/\/$/, '')}/chat/completions`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

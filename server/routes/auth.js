@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const auth = require('../middleware/auth');
 const router = express.Router();
 router.use((req, res, next) => {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32 ||
@@ -25,6 +26,28 @@ router.post('/login', async (req, res) => {
       { expiresIn: '24h' }
     );
     res.json({ token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role } });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Current authenticated identity
+router.get('/me', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['id', 'email', 'firstName', 'lastName', 'role'],
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        tenantId: process.env.GOVERNANCE_TENANT_ID,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
