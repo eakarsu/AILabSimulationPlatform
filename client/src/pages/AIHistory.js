@@ -1,3 +1,4 @@
+import FormattedAIReport from "../components/FormattedAIReport";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -109,42 +110,12 @@ export default function AIHistory() {
                     </div>
                   )}
 
-                  {item.parsedResult && (
+                  {(item.parsedResult || item.result) && (
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>
-                        Parsed Result
+                        Saved AI Report
                       </div>
-                      <pre style={{
-                        background: '#0f172a',
-                        borderRadius: 8,
-                        padding: 12,
-                        fontSize: 12,
-                        color: '#22c55e',
-                        overflow: 'auto',
-                        maxHeight: 300
-                      }}>
-                        {JSON.stringify(item.parsedResult, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-
-                  {item.result && !item.parsedResult && (
-                    <div>
-                      <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>
-                        AI Response
-                      </div>
-                      <div style={{
-                        background: '#0f172a',
-                        borderRadius: 8,
-                        padding: 12,
-                        fontSize: 13,
-                        color: '#94a3b8',
-                        maxHeight: 300,
-                        overflow: 'auto',
-                        whiteSpace: 'pre-wrap'
-                      }}>
-                        {item.result}
-                      </div>
+                      <FormattedAIReport response={item.parsedResult || item.result} title={formatEndpoint(item.endpoint)} />
                     </div>
                   )}
                 </div>
